@@ -1,10 +1,12 @@
 OVERVIEW:
 
-a toy BDD implementation in python, based on Knuth's AoCP, Vol 4 Fascicle 1
+A toy BDD implementation in python, based on Knuth's AoCP, Vol 4 Fascicle 1
 
 TODO:
 
-1. add scipt to generate Knuth-style BDD diagrams with graphviz
+0.  add an early-termination check for partitions that are connected (ie partition contains only one subset that is the whole set of vertices) - this might save a little bit of computation toward the end of the tree.
+
+1. add script to generate Knuth-style BDD diagrams with graphviz
 	impose ordering (variable tested must decrease)
 	use dashed and solid for low, high branches
 	use circles for branches and squares for sinks
