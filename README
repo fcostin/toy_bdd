@@ -1,1 +1,12 @@
-toy BDD implementation in python, based on Knuth's AoCP, Vol 4 Fascicle 1
+OVERVIEW:
+
+a toy BDD implementation in python, based on Knuth's AoCP, Vol 4 Fascicle 1
+
+TODO:
+
+1. add scipt to generate Knuth-style BDD diagrams with graphviz
+	impose ordering (variable tested must decrease)
+	use dashed and solid for low, high branches
+	use circles for branches and squares for sinks
+
+2. implement algorithm R to reduce the horrific tree things connection.py generates
