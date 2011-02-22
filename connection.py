@@ -219,6 +219,37 @@ def test():
     )
     print ''
     print 'output (unreduced) contains %d beads' % len(beads)
+    print ''
+    dump_graph(beads, 'tree.gv')
 
+def dump_graph(beads, file_name):
+    from itertools import groupby
+    out_file = open(file_name, 'w')
+    write_line = lambda s : out_file.write(s + '\n')
+    write_line('digraph tree {')
+    write_line('\tgraph []')
+    layers = {}
+    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v):
+        layers[value] = list(layer_iter)
+    for value in sorted(layers):
+        layer_beads = list(layers[value])
+        write_line('\t{')
+        write_line('\t\trank = same;')
+        for index, bead in layer_beads:
+            (value, left_index, right_index) = bead
+            write_line('\t\t"%d" [label="%d"];' % (index, value))
+        write_line('\t}')
+        write_line('\t{')
+        for index, bead in layer_beads:
+            (value, left_index, right_index) = bead
+            write_line('\t\t"%d" [label="%d"];' % (index, value))
+            if left_index != index:
+                write_line('\t\t"%d" -> "%d";' % (index, left_index))
+            if right_index != index:
+                write_line('\t\t"%d" -> "%d";' % (index, right_index))
+
+        write_line('\t}')
+    write_line('}')
+    out_file.close()
 if __name__ == '__main__':
     test()
