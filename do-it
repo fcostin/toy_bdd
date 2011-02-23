@@ -1,1 +1,1 @@
-dot -v -Tpng -O tree.gv
+dot -v -Tpng -O tree.gv && eog tree.gv.png &

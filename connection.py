@@ -13,6 +13,7 @@ Works okay for grids up to 8 by 8, but 9 by 9 starts to
 get pretty ugly.
 """
 
+import sys
 import heapq
 
 # define an ordering for the vertices by BFS from some root
@@ -46,7 +47,8 @@ def order_edges(vertices, edges, vertex_ordering):
     return edge_ordering
 
 # define the frontier sets based on the edge ordering
-def make_frontiers(edge_ordering):
+def make_frontiers(vertex_ordering, edge_ordering):
+    n_vertices = len(vertex_ordering)
     frontiers = []
     # XXX TODO this might be wrong!
     for (u, v) in edge_ordering:
@@ -104,16 +106,26 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
     make_bead(true_sink_index, n_edges, true_sink_index, true_sink_index)
     make_bead(false_sink_index, n_edges, false_sink_index, false_sink_index)
 
-    def cached_partition(cache, partition):
+    def cached_partition(cache, partition, next_partitions, next_frontier_low):
         """
         add partition to cache, return index, frozen_partition
         """
         frozen_partition = tuple([
             frozenset(subset) for subset in partition
         ])
-        if frozen_partition not in cache:
-            cache[frozen_partition] = make_partition_index()
-        return cache[frozen_partition], frozen_partition
+        if frozen_partition in cache:
+            index = cache[frozen_partition]
+            next_partitions[index] = frozen_partition
+            return index
+        elif len(partition) == 1 and len(partition[0]) == n_vertices:
+            return true_sink_index
+        elif next_frontier_low == n_vertices or any(max(s) < next_frontier_low for s in partition):
+            return false_sink_index
+        else:
+            index = make_partition_index()
+            cache[frozen_partition] = index
+            next_partitions[index] = frozen_partition
+            return index
 
     for depth, (edge, frontier) in enumerate(zip(edge_order, frontiers)):
         if verbose:
@@ -122,21 +134,16 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
                 len(beads),
                 len(partitions)
             )
-        # step 1. handle partitions that cannot be connected
-        surviving_partitions = {}
-        for index, partition in partitions.iteritems():
-            if all(subset.intersection(frontier) for subset in partition):
-                surviving_partitions[index] = partition
-            else:
-                make_bead(index, depth, false_sink_index, false_sink_index)
-
+        if depth + 1 < n_edges:
+            next_frontier_low = edge_order[depth + 1][0]
+        else:
+            next_frontier_low = n_vertices
         # cache partitions generated for each depth
         # this avoids a heap of duplication
         partition_cache = {}
-
         next_partitions = {}
-        # step 2. branch on decision to include this edge
-        for index, partition in surviving_partitions.iteritems():
+        # branch on decision to include this edge
+        for index, partition in partitions.iteritems():
             # Low subtree: don't include the edge
             low_partition = list(partition)
             if not any(edge[1] in subset for subset in partition):
@@ -144,11 +151,12 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
                 # subset if we haven't seen it yet
                 low_partition.append(set([edge[1]]))
 
-            low_index, low_partition = cached_partition(
+            low_index = cached_partition(
                 partition_cache,
-                low_partition
+                low_partition,
+                next_partitions,
+                next_frontier_low,
             )
-            next_partitions[low_index] = low_partition
 
             # High subtree: include the edge
             high_partition = []
@@ -163,23 +171,26 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
                 newly_connected = newly_connected.union(subset)
             high_partition.append(newly_connected)
 
-            high_index, high_partition = cached_partition(
+            high_index = cached_partition(
                 partition_cache,
-                high_partition
+                high_partition,
+                next_partitions,
+                next_frontier_low,
             )
-            next_partitions[high_index] = high_partition
 
             # create the bead for this split
             make_bead(index, depth, low_index, high_index)
 
         partitions = next_partitions
 
+    """
     # evaluate each final partition for connectedness and set sink nodes
     for index, partition in partitions.iteritems():
         if len(partition) == 1 and len(partition[0]) == n_vertices:
-            make_bead(index, depth, true_sink_index, true_sink_index)
+            make_bead(index, depth + 1, true_sink_index, true_sink_index)
         else:
-            make_bead(index, depth, false_sink_index, false_sink_index)
+            make_bead(index, depth + 1, false_sink_index, false_sink_index)
+    """
     # post-process - need to fix up the bead indices to agree with the usual
     # BDD indexing convention of root being highest, ..., 1 and 0 being the
     # true and false sinks
@@ -203,12 +214,18 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
 
 def test():
     # trying anything above n = 8 may prove a bit foolish
-    n = 3
+    n = 4
     print 'making a %d by %d grid' % (n, n)
     vertices, edges = make_grid(n)
     vertex_order = order_vertices(vertices, edges)
     edge_order = order_edges(vertices, edges, vertex_order)
-    frontiers = make_frontiers(edge_order)
+    frontiers = make_frontiers(vertex_order, edge_order)
+    for depth, (edge, frontier) in enumerate(zip(edge_order, frontiers)):
+        print 'depth %d edge %s frontier %s' % (
+            depth,
+            str(edge),
+            str(frontier),
+        )
 
     print 'begin horrific connectedness tree construction procedure'
     beads = make_connectedness_tree(
@@ -220,7 +237,12 @@ def test():
     print ''
     print 'output (unreduced) contains %d beads' % len(beads)
     print ''
-    dump_graph(beads, 'tree.gv')
+    if n <= 3:
+        dump_graph(beads, 'tree.gv')
+        sys.exit(0)
+    else:
+        print 'refusing to dump graph as n too large'
+        sys.exit(0)
 
 def dump_graph(beads, file_name):
     from itertools import groupby
@@ -229,15 +251,7 @@ def dump_graph(beads, file_name):
     write_line('digraph tree {')
     write_line('\tgraph []')
     layers = {}
-    # XXX TODO here we're grouping beads by their keys. this is
-    # bogus as each bead has a unique key, which yields useless singleton groups
-    # another alternative is to group on the split variable of the bead. this would
-    # be correct for a BDD but we're graphing BDDs that are not reduced, hence
-    # in many cases there are paths where a variable is tested multiple times.
-    # What we really want to do is group based on depth in the tree, but this information
-    # is currently not exported by the connection routine. it would be trivial to supply
-    # this as an auxillary map from keys to depths.
-    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : k):
+    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v):
         layers[value] = list(layer_iter)
     for value in sorted(layers):
         layer_beads = list(layers[value])
@@ -267,5 +281,6 @@ def dump_graph(beads, file_name):
         write_line('\t}')
     write_line('}')
     out_file.close()
+
 if __name__ == '__main__':
     test()
