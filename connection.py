@@ -229,7 +229,15 @@ def dump_graph(beads, file_name):
     write_line('digraph tree {')
     write_line('\tgraph []')
     layers = {}
-    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v):
+    # XXX TODO here we're grouping beads by their keys. this is
+    # bogus as each bead has a unique key, which yields useless singleton groups
+    # another alternative is to group on the split variable of the bead. this would
+    # be correct for a BDD but we're graphing BDDs that are not reduced, hence
+    # in many cases there are paths where a variable is tested multiple times.
+    # What we really want to do is group based on depth in the tree, but this information
+    # is currently not exported by the connection routine. it would be trivial to supply
+    # this as an auxillary map from keys to depths.
+    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : k):
         layers[value] = list(layer_iter)
     for value in sorted(layers):
         layer_beads = list(layers[value])
@@ -242,11 +250,19 @@ def dump_graph(beads, file_name):
         write_line('\t{')
         for index, bead in layer_beads:
             (value, left_index, right_index) = bead
-            write_line('\t\t"%d" [label="%d"];' % (index, value))
-            if left_index != index:
-                write_line('\t\t"%d" -> "%d";' % (index, left_index))
-            if right_index != index:
-                write_line('\t\t"%d" -> "%d";' % (index, right_index))
+            if left_index == index and right_index == index:
+                is_sink = True
+            elif left_index != index and right_index != index:
+                is_sink = False
+            else:
+                raise ValueError('bad bead : %s' % str(bead))
+            if is_sink:
+                label = 'T' if index else '&#8869;' # html entity (decimal) for unicode uptack (upside down T)
+                write_line('\t\t"%d" [label="%s", shape = box];' % (index, label))
+            else:
+                write_line('\t\t"%d" [label="%d", shape = circle];' % (index, value))
+                write_line('\t\t"%d" -> "%d" [style=dashed];' % (index, left_index))
+                write_line('\t\t"%d" -> "%d" [style=solid];' % (index, right_index))
 
         write_line('\t}')
     write_line('}')
