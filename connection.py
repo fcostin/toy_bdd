@@ -17,10 +17,11 @@ import sys
 import heapq
 
 # define an ordering for the vertices by BFS from some root
-def order_vertices(vertices, edges):
+def order_vertices(vertices, edges, root = None):
     closed = set()
     vertices = set(vertices)
-    root = vertices.pop()
+    if root is None:
+        root = vertices.pop()
     open = [(0, root)]
     ordering = []
     while open:
@@ -213,11 +214,14 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
     return relabled_beads
 
 def test():
-    # trying anything above n = 8 may prove a bit foolish
-    n = 4
+    # trying anything above n = 5 may prove a bit foolish
+    n = 5
     print 'making a %d by %d grid' % (n, n)
     vertices, edges = make_grid(n)
-    vertex_order = order_vertices(vertices, edges)
+    # experiment: trying to fix roots
+    # central_root = (n/2, ) * 2 # this seems to work poorly
+    corner_root = (0, ) * 2
+    vertex_order = order_vertices(vertices, edges, root = corner_root)
     edge_order = order_edges(vertices, edges, vertex_order)
     frontiers = make_frontiers(vertex_order, edge_order)
     for depth, (edge, frontier) in enumerate(zip(edge_order, frontiers)):
