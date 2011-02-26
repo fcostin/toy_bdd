@@ -14,6 +14,7 @@ get pretty ugly.
 """
 
 import heapq
+from itertools import groupby
 
 # define an ordering for the vertices by BFS from some root
 def order_vertices(vertices, edges):
@@ -220,10 +221,14 @@ def test():
     print ''
     print 'output (unreduced) contains %d beads' % len(beads)
     print ''
+
+    beads = reduce_beads(beads)
+    print ''
+    print 'output (reduced) contains %d beads' % len(beads)
+    print ''
     dump_graph(beads, 'tree.gv')
 
 def dump_graph(beads, file_name):
-    from itertools import groupby
     out_file = open(file_name, 'w')
     write_line = lambda s : out_file.write(s + '\n')
     write_line('digraph tree {')
@@ -267,5 +272,52 @@ def dump_graph(beads, file_name):
         write_line('\t}')
     write_line('}')
     out_file.close()
+
+def reduce_beads(beads):
+    s = len(beads)
+    redirect = {}
+    cache = {}
+    layers = [(v, list(i)) for (v, i) in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v)]
+    layers = sorted(layers, reverse = True)
+
+    def get_repr(key):
+        while key in redirect:
+            next_key = redirect[key]
+            if next_key == key:
+                break
+            else:
+                key = next_key
+        return key
+
+    # iterate over beads in decreasing variable order
+    for variable, layer in layers:
+        for key, (v, l, r) in layer:
+            l = get_repr(l)
+            r = get_repr(r)
+            if l == r:
+                redirect[key] = l
+            elif (v, l, r) in cache:
+                redirect[key] = cache[(v, l, r)]
+            else:
+                cache[(v, l, r)] = key
+    print redirect
+    print cache
+    s = len(beads)
+    root_key = s - 1
+    reduced_beads = {}
+    def walk(key):
+        key = get_repr(key)
+        (v, l, r) = beads[key]
+        l = get_repr(l)
+        r = get_repr(r)
+        reduced_beads[key] = (v, l, r)
+        if l != key:
+            walk(l)
+        if r != key:
+            walk(r)
+    walk(root_key)
+    #XXX TODO  fix numbering? sigh.
+    return reduced_beads
+
 if __name__ == '__main__':
     test()
