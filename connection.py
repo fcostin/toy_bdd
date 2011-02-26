@@ -216,7 +216,7 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
 
 def test():
     # trying anything above n = 5 may prove a bit foolish
-    n = 5
+    n = 4
     print 'making a %d by %d grid' % (n, n)
     vertices, edges = make_grid(n)
     # experiment: trying to fix roots
@@ -243,11 +243,11 @@ def test():
     print 'output (unreduced) contains %d beads' % len(beads)
     print ''
 
-	beads = reduce_beads(beads)
+    beads = reduce_beads(beads)
     print ''
     print 'output (reduced) contains %d beads' % len(beads)
     print ''
-    if n <= 3:
+    if len(beads) <= 1000:
         dump_graph(beads, 'tree.gv')
         sys.exit(0)
     else:
@@ -295,6 +295,7 @@ def reduce_beads(beads):
     s = len(beads)
     redirect = {}
     cache = {}
+    print 'reduce : making layers'
     layers = [(v, list(i)) for (v, i) in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v)]
     layers = sorted(layers, reverse = True)
 
@@ -307,6 +308,7 @@ def reduce_beads(beads):
                 key = next_key
         return key
 
+    print 'reduce : building redirects'
     # iterate over beads in decreasing variable order
     for variable, layer in layers:
         for key, (v, l, r) in layer:
@@ -318,8 +320,8 @@ def reduce_beads(beads):
                 redirect[key] = cache[(v, l, r)]
             else:
                 cache[(v, l, r)] = key
-    print redirect
-    print cache
+
+    print 'reduce : walking'
     s = len(beads)
     root_key = s - 1
     reduced_beads = {}
