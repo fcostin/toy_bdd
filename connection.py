@@ -15,7 +15,6 @@ get pretty ugly.
 
 import sys
 import heapq
-import numpy
 
 # define an ordering for the vertices by BFS from some root
 def order_vertices(vertices, edges, root = None):
@@ -54,25 +53,8 @@ def make_frontiers(vertex_ordering, edge_ordering):
     frontiers = []
     # XXX TODO this might be wrong!
     for (u, v) in edge_ordering:
-        # print 'making frontier; u, v = %d, %d' % (u, v)
         frontiers.append(set(range(u, v + 1)))
     return frontiers
-
-def make_grid(n):
-    """
-    makes graph (V, E) of n by n grid.
-    """
-    vertices = set()
-    edges = {}
-    for i in xrange(n):
-        for j in xrange(n):
-            vertex = (i, j)
-            vertices.add(vertex)
-            for (i2, j2) in ((i, j-1), (i, j+1), (i-1, j), (i+1, j)):
-                if i2 < 0 or i2 == n or j2 < 0 or j2 == n:
-                    continue
-                edges[vertex] = edges.get(vertex, []) + [(i2, j2)]
-    return (vertices, edges)
 
 def make_counter():
     def gen_integers():
@@ -214,126 +196,6 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
         relabel(i)
     return relabled_beads
 
-def test():
-    # trying anything above n = 5 may prove a bit foolish
-    n = 5
-    print 'making a %d by %d grid' % (n, n)
-    vertices, edges = make_grid(n)
-    # experiment: trying to fix roots
-    central_root = (n/2, ) * 2 # this seems to work poorly
-    corner_root = (0, ) * 2
-    vertex_order = order_vertices(vertices, edges, root = corner_root)
-    edge_order = order_edges(vertices, edges, vertex_order)
-    frontiers = make_frontiers(vertex_order, edge_order)
-    for depth, (edge, frontier) in enumerate(zip(edge_order, frontiers)):
-        print 'depth %d edge %s frontier %s' % (
-            depth,
-            str(edge),
-            str(frontier),
-        )
-
-    print 'begin horrific connectedness tree construction procedure'
-    beads = make_connectedness_tree(
-        vertex_order,
-        edge_order,
-        frontiers,
-        verbose = True,
-    )
-    print ''
-    print 'output (unreduced) contains %d beads' % len(beads)
-    print ''
-
-    beads = reduce_beads(beads)
-    print ''
-    print 'output (reduced) contains %d beads' % len(beads)
-    print ''
-
-    import pylab
-    plots_across = 20
-    plots_down = 14
-    n_plots = plots_across * plots_down
-    pylab.figure()
-    for plot, soln in enumerate(gen_random_solutions(beads, how_many = n_plots)):
-        bmp = numpy.zeros((2 * n + 1, ) * 2, dtype = numpy.int)
-        def carve_edge(edge_i):
-            (u_i, v_i) = edge_order[edge_i]
-            (u_x, u_y) = vertex_order[u_i]
-            (v_x, v_y) = vertex_order[v_i]
-            bmp[2 * u_x + 1, 2 * u_y + 1] = 1
-            bmp[2 * v_x + 1, 2 * v_y + 1] = 1
-            if u_x == v_x and u_y == v_y + 1:
-                bmp[2 * u_x + 1, 2 * v_y + 2] = 1
-            elif u_x == v_x and u_y + 1 == v_y:
-                bmp[2 * u_x + 1, 2 * u_y + 2] = 1
-            elif u_x == v_x + 1 and u_y == v_y:
-                bmp[2 * v_x + 2, 2 * u_y + 1] = 1
-            elif u_x + 1 == v_x and u_y == v_y:
-                bmp[2 * u_x + 2, 2 * u_y + 1] = 1
-        for i, include_edge in enumerate(soln):
-            if include_edge:
-                carve_edge(i)
-        pylab.subplot(
-            plots_down,
-            plots_across,
-            plot + 1
-        )
-        pylab.imshow(
-            1 - bmp,
-            interpolation = 'nearest',
-            cmap = pylab.cm.Greys,
-        )
-        pylab.xticks([])
-        pylab.yticks([])
-        print soln
-    pylab.show()
-
-    if len(beads) <= 1000:
-        dump_graph(beads, 'tree.gv')
-        sys.exit(0)
-    else:
-        print 'refusing to dump graph as n too large'
-        sys.exit(0)
-
-def dump_graph(beads, file_name):
-    out_file = open(file_name, 'w')
-    write_line = lambda s : out_file.write(s + '\n')
-    write_line('digraph tree {')
-    write_line('\tgraph []')
-    layers = {}
-    for (key, (v, l, r)) in beads.iteritems():
-        if v not in layers:
-            layers[v] = []
-        layers[v].append((key, (v, l, r)))
-    for value in sorted(layers):
-        layer_beads = layers[value]
-        write_line('\t{')
-        write_line('\t\trank = same;')
-        for index, bead in layer_beads:
-            (value, left_index, right_index) = bead
-            write_line('\t\t"%d" [label="%d"];' % (index, value))
-        write_line('\t}')
-        write_line('\t{')
-        for index, bead in layer_beads:
-            (value, left_index, right_index) = bead
-            if left_index == index and right_index == index:
-                is_sink = True
-            elif left_index != index and right_index != index:
-                is_sink = False
-            else:
-                raise ValueError('bad bead : %s' % str(bead))
-            if is_sink:
-                # n.b. html entity (decimal) for unicode uptack (upside down T)
-                label = 'T' if index else '&#8869;'
-                write_line('\t\t"%d" [label="%s", shape = box];' % (index, label))
-            else:
-                write_line('\t\t"%d" [label="%d", shape = circle];' % (index, value))
-                write_line('\t\t"%d" -> "%d" [style=dashed];' % (index, left_index))
-                write_line('\t\t"%d" -> "%d" [style=solid];' % (index, right_index))
-
-        write_line('\t}')
-    write_line('}')
-    out_file.close()
-
 def reduce_beads(beads):
     s = len(beads)
     redirect = {}
@@ -404,24 +266,3 @@ def rekey_monotone(beads):
     for key in beads:
         relabel(key)
     return relabled_beads
-
-
-def gen_random_solutions(beads, how_many):
-    from bdd import bdd_count_solutions, bdd_generate_random_solution
-    bdd_beads = {
-        's' : len(beads),
-        'dag' : beads,
-    }
-    c = {}
-    n_solns = bdd_count_solutions(bdd_beads, c)
-    print 'number of solutions : %d' % n_solns
-    print 'here are a few random ones:'
-    for _ in xrange(how_many):
-        yield bdd_generate_random_solution(
-            bdd_beads,
-            c,
-            rand = numpy.random.rand
-        )
-
-if __name__ == '__main__':
-    test()
