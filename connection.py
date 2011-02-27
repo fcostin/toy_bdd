@@ -15,7 +15,6 @@ get pretty ugly.
 
 import sys
 import heapq
-from itertools import groupby
 
 # define an ordering for the vertices by BFS from some root
 def order_vertices(vertices, edges, root = None):
@@ -216,7 +215,7 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
 
 def test():
     # trying anything above n = 5 may prove a bit foolish
-    n = 4
+    n = 5
     print 'making a %d by %d grid' % (n, n)
     vertices, edges = make_grid(n)
     # experiment: trying to fix roots
@@ -260,10 +259,12 @@ def dump_graph(beads, file_name):
     write_line('digraph tree {')
     write_line('\tgraph []')
     layers = {}
-    for value, layer_iter in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v):
-        layers[value] = list(layer_iter)
+    for (key, (v, l, r)) in beads.iteritems():
+        if v not in layers:
+            layers[v] = []
+        layers[v].append((key, (v, l, r)))
     for value in sorted(layers):
-        layer_beads = list(layers[value])
+        layer_beads = layers[value]
         write_line('\t{')
         write_line('\t\trank = same;')
         for index, bead in layer_beads:
@@ -296,8 +297,13 @@ def reduce_beads(beads):
     redirect = {}
     cache = {}
     print 'reduce : making layers'
-    layers = [(v, list(i)) for (v, i) in groupby(beads.iteritems(), key = lambda (k, (v, l, r)) : v)]
-    layers = sorted(layers, reverse = True)
+
+    layers = {}
+    for (key, (v, l, r)) in beads.iteritems():
+        if v not in layers:
+            layers[v] = []
+        layers[v].append((key, (v, l, r)))
+    layer_variables = sorted(layers.keys(), reverse = True)
 
     def get_repr(key):
         while key in redirect:
@@ -310,7 +316,8 @@ def reduce_beads(beads):
 
     print 'reduce : building redirects'
     # iterate over beads in decreasing variable order
-    for variable, layer in layers:
+    for variable in layer_variables:
+        layer = layers[variable]
         for key, (v, l, r) in layer:
             l = get_repr(l)
             r = get_repr(r)
@@ -325,8 +332,11 @@ def reduce_beads(beads):
     s = len(beads)
     root_key = s - 1
     reduced_beads = {}
+
     def walk(key):
         key = get_repr(key)
+        if key in reduced_beads:
+            return
         (v, l, r) = beads[key]
         l = get_repr(l)
         r = get_repr(r)
@@ -335,8 +345,10 @@ def reduce_beads(beads):
             walk(l)
         if r != key:
             walk(r)
+
     walk(root_key)
-    #XXX TODO  fix numbering? sigh.
+    print 'reduce : finished, returning'
+    #XXX TODO fix keying? sigh.
     return reduced_beads
 
 if __name__ == '__main__':
