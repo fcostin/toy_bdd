@@ -1,5 +1,5 @@
 """
-Plot uniformly sampled random connected subgraphs of n*n grid.
+Plot uniformly sampled random connected subgraphs of a shell thing.
 """
 
 import pylab
@@ -10,20 +10,21 @@ from connection import order_vertices, order_edges, make_frontiers, \
 
 from bdd import bdd_count_solutions, bdd_generate_random_solution
 
-def make_grid(n):
+def make_shell_graph(n, m):
     """
-    makes graph (V, E) of n by n grid.
+    makes graph (V, E) of n^2 grid missing m^2 bit in the middle
     """
     vertices = set()
     edges = {}
     for i in xrange(n):
         for j in xrange(n):
-            vertex = (i, j)
-            vertices.add(vertex)
-            for (i2, j2) in ((i, j-1), (i, j+1), (i-1, j), (i+1, j)):
-                if i2 < 0 or i2 == n or j2 < 0 or j2 == n:
-                    continue
-                edges[vertex] = edges.get(vertex, []) + [(i2, j2)]
+            if abs(i - n/2) > m/2 or abs(j - n/2) > m/2:
+                vertices.add((i, j))
+
+    for (i, j) in vertices:
+        for (i2, j2) in ((i, j-1), (i, j+1), (i-1, j), (i+1, j)):
+            if (i2, j2) in vertices:
+                edges[(i, j)] = edges.get((i, j), []) + [(i2, j2)]
     return (vertices, edges)
 
 
@@ -45,9 +46,10 @@ def gen_random_solutions(beads, how_many):
 
 def main():
     # trying anything above n = 5 may prove a bit foolish
-    n = 5
-    print 'making a %d by %d grid' % (n, n)
-    vertices, edges = make_grid(n)
+    n = 7
+    m = 2
+    print 'making a %d^2 \\ %d^2 shell' % (n, m)
+    vertices, edges = make_shell_graph(n, m)
     # experiment: trying to fix roots
     central_root = (n/2, ) * 2 # this seems to work poorly
     corner_root = (0, ) * 2
@@ -68,8 +70,8 @@ def main():
 
     print '\noutput (reduced) contains %d beads\n' % len(beads)
 
-    plots_across = 120
-    plots_down = 90
+    plots_across = 12
+    plots_down = 9
     n_plots = plots_across * plots_down
 
     subplot_margin = 2
@@ -112,7 +114,7 @@ def main():
         x_slice = slice(plot_xx, plot_xx + subplot_width)
         y_slice = slice(plot_yy, plot_yy + subplot_height)
         figure_bmp[x_slice, y_slice] = 4 * (1 - bmp)
-        # print soln
+        print soln
 
     pylab.figure()
     pylab.imshow(

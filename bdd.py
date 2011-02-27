@@ -127,6 +127,7 @@ def bdd_generate_random_solution(bdd, c, rand):
             if k == 1:
                 return x
             else:
+                # this may be a bit bugged
                 raise ValueError('there are no solutions')
         prev_v = v_k
         if (rand() * c[k]) < c[h_k]:
@@ -135,9 +136,6 @@ def bdd_generate_random_solution(bdd, c, rand):
         else:
             x.append(0)
             k = l_k
-
-
-
 
 
 def main():
