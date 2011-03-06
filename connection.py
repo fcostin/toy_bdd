@@ -196,11 +196,12 @@ def make_connectedness_tree(vertex_order, edge_order, frontiers, verbose = False
         relabel(i)
     return relabled_beads
 
-def reduce_beads(beads):
+def reduce_beads(beads, verbose = True):
     s = len(beads)
     redirect = {}
     cache = {}
-    print 'reduce : making layers'
+    if verbose:
+        print 'reduce : making layers'
 
     layers = {}
     for (key, (v, l, r)) in beads.iteritems():
@@ -218,7 +219,8 @@ def reduce_beads(beads):
                 key = next_key
         return key
 
-    print 'reduce : building redirects'
+    if verbose:
+        print 'reduce : building redirects'
     # iterate over beads in decreasing variable order
     for variable in layer_variables:
         layer = layers[variable]
@@ -232,7 +234,8 @@ def reduce_beads(beads):
             else:
                 cache[(v, l, r)] = key
 
-    print 'reduce : walking'
+    if verbose:
+        print 'reduce : walking'
     s = len(beads)
     root_key = s - 1
     reduced_beads = {}
@@ -251,7 +254,8 @@ def reduce_beads(beads):
             walk(r)
 
     walk(root_key)
-    print 'reduce : finished, returning'
+    if verbose:
+        print 'reduce : finished, returning'
     #XXX TODO fix keying? sigh.
     return rekey_monotone(reduced_beads)
 

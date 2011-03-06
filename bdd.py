@@ -109,7 +109,7 @@ def bdd_count_solutions(bdd, c = None):
     # first variable tested, ie by the root bead, may not be the first variable
     # so as above we multiply by 2 for each skipped variable
     v_root = dag[s - 1][0]
-    return 2 ** (v_root - 1) * c[s - 1]
+    return (2 ** (v_root - 1)) * c[s - 1]
 
 def bdd_generate_random_solution(bdd, c, rand):
     s = bdd['s']

@@ -68,18 +68,18 @@ def main():
 
     print '\noutput (reduced) contains %d beads\n' % len(beads)
 
-    plots_across = 120
-    plots_down = 90
+    plots_across = 5
+    plots_down = 5
     n_plots = plots_across * plots_down
 
-    subplot_margin = 2
+    subplot_margin = -1
     subplot_width = 2 * n + 1
     subplot_height = 2 * n + 1
     plot_width = (
-        plots_across * subplot_width + subplot_margin * (plots_across + 1)
+        plots_across * subplot_width + subplot_margin * (plots_across - 1)
     )
     plot_height = (
-        plots_down * subplot_height + subplot_margin * (plots_down + 1)
+        plots_down * subplot_height + subplot_margin * (plots_down - 1)
     )
 
     figure_bmp = numpy.ones((plot_width, plot_height), dtype = numpy.int)
@@ -107,8 +107,8 @@ def main():
 
         plot_x = plot / plots_down
         plot_y = plot % plots_down
-        plot_xx = plot_x * (subplot_width + subplot_margin) + subplot_margin
-        plot_yy = plot_y * (subplot_height + subplot_margin) + subplot_margin
+        plot_xx = plot_x * (subplot_width + subplot_margin)
+        plot_yy = plot_y * (subplot_height + subplot_margin)
         x_slice = slice(plot_xx, plot_xx + subplot_width)
         y_slice = slice(plot_yy, plot_yy + subplot_height)
         figure_bmp[x_slice, y_slice] = 4 * (1 - bmp)
